@@ -282,8 +282,6 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
     setCurrentStep({ message: "Sẵn sàng để bắt đầu!", type: 'info' });
     setIsSorting(false);
     setIsPaused(false);
-    stopRef.current = false;
-    isPausedRef.current = false;
   }, [algorithm]);
 
   useEffect(() => {
@@ -368,6 +366,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       setArray([...tempArray]);
       setCurrentStep({ message: `Tìm phần tử ${sortOrder === 'asc' ? 'nhỏ nhất' : 'lớn nhất'} từ vị trí ${i}`, type: 'info' });
       await sleep(speedRef.current); await waitControl();
+      if (stopRef.current || executionIdRef.current !== myId) return;
 
       for (let j = i + 1; j < n; j++) {
         if (stopRef.current || executionIdRef.current !== myId) return;
@@ -376,6 +375,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         localComparisons++;
         setStats(prev => ({ ...prev, comparisons: localComparisons }));
         await sleep(speedRef.current * 0.5); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
 
         const isBetter = sortOrder === 'asc' ? tempArray[j].value < tempArray[minIdx].value : tempArray[j].value > tempArray[minIdx].value;
         if (isBetter) {
@@ -395,11 +395,13 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         tempArray[i].swapDirection = 'up'; tempArray[minIdx].swapDirection = 'down';
         setArray([...tempArray]);
         await sleep(speedRef.current * 0.5); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
         
         const temp = tempArray[i]; tempArray[i] = tempArray[minIdx]; tempArray[minIdx] = temp;
         localSwaps++; setStats(prev => ({ ...prev, swaps: localSwaps }));
         setArray([...tempArray]);
         await sleep(speedRef.current * 0.8); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
         
         tempArray[i].swapDirection = null; tempArray[minIdx].swapDirection = null;
       }
@@ -429,6 +431,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       setArray([...tempArray]);
       setCurrentStep({ message: `Đang xét phần tử ${tempArray[i].value}`, type: 'info' });
       await sleep(speedRef.current); await waitControl();
+      if (stopRef.current || executionIdRef.current !== myId) return;
 
       let j = i;
       while (j > 0) {
@@ -442,6 +445,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         setStats(prev => ({ ...prev, comparisons: localComparisons }));
         setCurrentStep({ message: `So sánh ${tempArray[j].value} và ${tempArray[j-1].value}`, type: 'compare' });
         await sleep(speedRef.current); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
 
         const shouldSwap = sortOrder === 'asc' 
           ? tempArray[j-1].value > tempArray[j].value 
@@ -501,6 +505,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       setArray([...tempArray]);
       setCurrentStep({ message: `Chọn chốt (pivot): ${pivot}`, type: 'info' });
       await sleep(speedRef.current); await waitControl();
+      if (stopRef.current || executionIdRef.current !== myId) return -1;
 
       let i = low - 1;
       for (let j = low; j < high; j++) {
@@ -512,6 +517,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         setStats(prev => ({ ...prev, comparisons: localComparisons }));
         setCurrentStep({ message: `So sánh ${tempArray[j].value} với chốt ${pivot}`, type: 'compare' });
         await sleep(speedRef.current * 0.5); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return -1;
 
         const condition = sortOrder === 'asc' ? tempArray[j].value < pivot : tempArray[j].value > pivot;
         if (condition) {
@@ -531,6 +537,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
           setStats(prev => ({ ...prev, swaps: localSwaps }));
           setArray([...tempArray]);
           await sleep(speedRef.current * 0.8); await waitControl();
+          if (stopRef.current || executionIdRef.current !== myId) return -1;
           
           tempArray[i].swapDirection = null;
           tempArray[j].swapDirection = null;
@@ -551,6 +558,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       setArray([...tempArray]);
       setCurrentStep({ message: `Đưa chốt ${pivot} về đúng vị trí`, type: 'swap' });
       await sleep(speedRef.current * 0.5); await waitControl();
+      if (stopRef.current || executionIdRef.current !== myId) return -1;
 
       const temp = tempArray[pivotIdx];
       tempArray[pivotIdx] = tempArray[high];
@@ -559,6 +567,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       setStats(prev => ({ ...prev, swaps: localSwaps }));
       setArray([...tempArray]);
       await sleep(speedRef.current * 0.8); await waitControl();
+      if (stopRef.current || executionIdRef.current !== myId) return -1;
 
       tempArray[pivotIdx].status = 'sorted';
       tempArray[pivotIdx].swapDirection = null;
@@ -570,13 +579,16 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
 
     const sort = async (low: number, high: number) => {
       if (low < high) {
+        if (stopRef.current || executionIdRef.current !== myId) return;
         localPasses++;
         setStats(prev => ({ ...prev, passes: localPasses }));
         let pi = await partition(low, high);
-        if (pi === -1) return;
+        if (pi === -1 || stopRef.current || executionIdRef.current !== myId) return;
         await sort(low, pi - 1);
+        if (stopRef.current || executionIdRef.current !== myId) return;
         await sort(pi + 1, high);
       } else if (low === high) {
+        if (stopRef.current || executionIdRef.current !== myId) return;
         tempArray[low].status = 'sorted';
         setArray([...tempArray]);
       }
@@ -603,6 +615,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       for (let k = l; k <= r; k++) tempArray[k].status = 'active';
       setArray([...tempArray]);
       await sleep(speedRef.current); await waitControl();
+      if (stopRef.current || executionIdRef.current !== myId) return;
 
       let i = 0, j = 0, k = l;
       while (i < n1 && j < n2) {
@@ -612,6 +625,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         setStats(prev => ({ ...prev, comparisons: localComparisons }));
         setCurrentStep({ message: `So sánh ${L[i].value} và ${R[j].value}`, type: 'compare' });
         await sleep(speedRef.current * 0.5); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
 
         const condition = sortOrder === 'asc' ? L[i].value <= R[j].value : L[i].value >= R[j].value;
         if (condition) {
@@ -623,6 +637,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         }
         setArray([...tempArray]);
         await sleep(speedRef.current * 0.8); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
         tempArray[k].status = 'sorted';
         tempArray[k].swapDirection = null;
         setArray([...tempArray]);
@@ -634,6 +649,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         tempArray[k] = { ...L[i], status: 'swapping', swapDirection: 'up' };
         setArray([...tempArray]);
         await sleep(speedRef.current * 0.5); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
         tempArray[k].status = 'sorted';
         tempArray[k].swapDirection = null;
         setArray([...tempArray]);
@@ -645,6 +661,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         tempArray[k] = { ...R[j], status: 'swapping', swapDirection: 'down' };
         setArray([...tempArray]);
         await sleep(speedRef.current * 0.5); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
         tempArray[k].status = 'sorted';
         tempArray[k].swapDirection = null;
         setArray([...tempArray]);
@@ -654,11 +671,14 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
 
     const sort = async (l: number, r: number) => {
       if (l < r) {
+        if (stopRef.current || executionIdRef.current !== myId) return;
         localPasses++;
         setStats(prev => ({ ...prev, passes: localPasses }));
         let m = Math.floor((l + r) / 2);
         await sort(l, m);
+        if (stopRef.current || executionIdRef.current !== myId) return;
         await sort(m + 1, r);
+        if (stopRef.current || executionIdRef.current !== myId) return;
         await merge(l, m, r);
       }
     };
@@ -703,6 +723,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         setArray([...tempArray]);
         setCurrentStep({ message: `Vun đống: Hoán đổi ${tempArray[i].value} và ${tempArray[largest].value}`, type: 'swap' });
         await sleep(speedRef.current * 0.5); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
 
         const temp = tempArray[i];
         tempArray[i] = tempArray[largest];
@@ -711,6 +732,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         setStats(prev => ({ ...prev, swaps: localSwaps }));
         setArray([...tempArray]);
         await sleep(speedRef.current * 0.8); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
 
         tempArray[i].swapDirection = null;
         tempArray[largest].swapDirection = null;
@@ -743,6 +765,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       tempArray[i].swapDirection = 'down';
       setArray([...tempArray]);
       await sleep(speedRef.current * 0.5); await waitControl();
+      if (stopRef.current || executionIdRef.current !== myId) return;
 
       const temp = tempArray[0];
       tempArray[0] = tempArray[i];
@@ -751,6 +774,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       setStats(prev => ({ ...prev, swaps: localSwaps }));
       setArray([...tempArray]);
       await sleep(speedRef.current * 0.8); await waitControl();
+      if (stopRef.current || executionIdRef.current !== myId) return;
 
       tempArray[i].status = 'sorted';
       tempArray[i].swapDirection = null;
@@ -775,6 +799,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       setArray([...tempArray]);
       setCurrentStep({ message: `Xét phần tử tại vị trí ${i}`, type: 'info' });
       await sleep(speedRef.current); await waitControl();
+      if (stopRef.current || executionIdRef.current !== myId) return;
 
       for (let j = i + 1; j < n; j++) {
         if (stopRef.current || executionIdRef.current !== myId) return;
@@ -785,6 +810,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
         setStats(prev => ({ ...prev, comparisons: localComparisons }));
         setCurrentStep({ message: `So sánh ${tempArray[i].value} và ${tempArray[j].value}`, type: 'compare' });
         await sleep(speedRef.current * 0.5); await waitControl();
+        if (stopRef.current || executionIdRef.current !== myId) return;
 
         const shouldSwap = sortOrder === 'asc' 
           ? tempArray[j].value < tempArray[i].value 
@@ -842,8 +868,21 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
     } finally { if (executionIdRef.current === myId) setIsSorting(false); }
   };
 
-  const handleReset = () => { executionIdRef.current++; stopRef.current = true; isPausedRef.current = false; setIsPaused(false); generateArray(customInput); };
-  const handleRandomize = () => { executionIdRef.current++; stopRef.current = true; isPausedRef.current = false; setIsPaused(false); setCustomInput(''); generateArray(); };
+  const handleReset = () => { 
+    stopRef.current = true;
+    executionIdRef.current++; 
+    setIsPaused(false); 
+    isPausedRef.current = false; 
+    generateArray(customInput); 
+  };
+  const handleRandomize = () => { 
+    stopRef.current = true;
+    executionIdRef.current++; 
+    setIsPaused(false); 
+    isPausedRef.current = false; 
+    setCustomInput(''); 
+    generateArray(); 
+  };
 
   const getPseudoCode = () => {
     if (algorithm === 'bubble') return (
@@ -909,10 +948,22 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
           </button>
           <div className="text-center">
             <h1 className="text-xl md:text-2xl font-black tracking-tighter">
-              {algorithm === 'bubble' ? 'Sắp xếp nổi bọt' : algorithm === 'insertion' ? 'Sắp xếp chèn' : 'Sắp xếp chọn'}
+              {algorithm === 'bubble' ? 'Sắp xếp nổi bọt' : 
+               algorithm === 'insertion' ? 'Sắp xếp chèn' : 
+               algorithm === 'selection' ? 'Sắp xếp chọn' :
+               algorithm === 'quick' ? 'Sắp xếp nhanh' :
+               algorithm === 'merge' ? 'Sắp xếp trộn' :
+               algorithm === 'heap' ? 'Sắp xếp vun đống' :
+               'Đổi chỗ trực tiếp'}
             </h1>
             <p className="text-slate-400 text-[10px] uppercase tracking-widest font-bold">
-              {algorithm === 'bubble' ? 'Bubble Sort' : algorithm === 'insertion' ? 'Insertion Sort' : 'Selection Sort'}
+              {algorithm === 'bubble' ? 'Bubble Sort' : 
+               algorithm === 'insertion' ? 'Insertion Sort' : 
+               algorithm === 'selection' ? 'Selection Sort' :
+               algorithm === 'quick' ? 'Quick Sort' :
+               algorithm === 'merge' ? 'Merge Sort' :
+               algorithm === 'heap' ? 'Heap Sort' :
+               'Interchange Sort'}
             </p>
           </div>
           <div className="hidden md:block w-[100px]" /> {/* Spacer for centering on desktop */}
@@ -989,9 +1040,14 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
                   ) : (
                     <button onClick={() => { setIsPaused(!isPaused); isPausedRef.current = !isPaused; }} className={`w-full ${isPaused ? 'bg-amber-600 shadow-amber-900/20' : 'bg-slate-700 shadow-slate-900/20'} hover:opacity-95 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] text-sm`}>{isPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}{isPaused ? 'Tiếp tục' : 'Tạm dừng'}</button>
                   )}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={handleRandomize} className="bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl transition-all active:scale-[0.98] border border-slate-700 flex items-center justify-center gap-1.5 font-semibold text-xs"><Zap size={14} className="text-yellow-400" /> Ngẫu nhiên</button>
-                    <button onClick={handleReset} className="bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl transition-all active:scale-[0.98] border border-slate-700 flex items-center justify-center gap-1.5 font-semibold text-xs"><RotateCcw size={14} /> Đặt lại</button>
+                  <div className="grid grid-cols-1">
+                    <button 
+                      onClick={handleRandomize} 
+                      disabled={isSorting}
+                      className="bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl transition-all active:scale-[0.98] border border-slate-700 flex items-center justify-center gap-1.5 font-semibold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Zap size={14} className="text-yellow-400" /> Ngẫu nhiên
+                    </button>
                   </div>
                 </div>
                 <div className="pt-2 space-y-2">
@@ -1002,7 +1058,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Dãy số tùy chỉnh</label>
                   <div className="flex gap-2">
                     <input type="text" value={customInput} onChange={(e) => setCustomInput(e.target.value)} placeholder="Ví dụ: 10, 5, 8..." disabled={isSorting} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-slate-200" />
-                    <button onClick={() => generateArray(customInput)} disabled={isSorting} className="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded-xl disabled:opacity-50 transition-all flex items-center gap-1.5 font-bold shadow-lg shadow-blue-900/20 text-xs"><RefreshCw size={14} /> Cập nhật</button>
+                    <button onClick={() => generateArray(customInput)} disabled={isSorting} className="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 font-bold shadow-lg shadow-blue-900/20 text-xs"><RefreshCw size={14} /> Cập nhật</button>
                   </div>
                 </div>
               </div>
