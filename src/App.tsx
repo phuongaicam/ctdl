@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 
 // --- Types ---
-type Algorithm = 'bubble' | 'insertion' | 'selection' | 'quick' | 'merge' | 'heap';
+type Algorithm = 'bubble' | 'insertion' | 'selection' | 'quick' | 'merge' | 'heap' | 'interchange';
 
 interface ArrayElement {
   id: string;
@@ -108,6 +108,15 @@ function Home({ onSelect }: { onSelect: (algo: Algorithm) => void }) {
       color: 'from-orange-500/20 to-amber-500/20',
       border: 'border-orange-500/30',
       detail: 'Sử dụng cấu trúc dữ liệu Heap để tìm phần tử lớn nhất.'
+    },
+    { 
+      id: 'interchange' as Algorithm, 
+      name: 'Đổi chỗ trực tiếp', 
+      desc: 'Interchange Sort', 
+      icon: <RefreshCw className="text-cyan-400" />, 
+      color: 'from-cyan-500/20 to-blue-500/20',
+      border: 'border-cyan-500/30',
+      detail: 'So sánh phần tử hiện tại với tất cả các phần tử phía sau và hoán đổi ngay nếu sai thứ tự.'
     }
   ];
 
@@ -754,6 +763,69 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
     setArray([...tempArray]);
   };
 
+  const interchangeSort = async (myId: number) => {
+    let tempArray = [...array].map(el => ({ ...el, status: 'default' as const, swapDirection: null as any }));
+    let n = tempArray.length;
+    let localSwaps = 0, localComparisons = 0, localPasses = 0;
+
+    for (let i = 0; i < n - 1; i++) {
+      localPasses++;
+      setStats(prev => ({ ...prev, passes: localPasses }));
+      tempArray[i].status = 'active';
+      setArray([...tempArray]);
+      setCurrentStep({ message: `Xét phần tử tại vị trí ${i}`, type: 'info' });
+      await sleep(speedRef.current); await waitControl();
+
+      for (let j = i + 1; j < n; j++) {
+        if (stopRef.current || executionIdRef.current !== myId) return;
+        
+        tempArray[j].status = 'comparing';
+        setArray([...tempArray]);
+        localComparisons++;
+        setStats(prev => ({ ...prev, comparisons: localComparisons }));
+        setCurrentStep({ message: `So sánh ${tempArray[i].value} và ${tempArray[j].value}`, type: 'compare' });
+        await sleep(speedRef.current * 0.5); await waitControl();
+
+        const shouldSwap = sortOrder === 'asc' 
+          ? tempArray[j].value < tempArray[i].value 
+          : tempArray[j].value > tempArray[i].value;
+
+        if (shouldSwap) {
+          setCurrentStep({ message: `${tempArray[j].value} ${sortOrder === 'asc' ? '<' : '>'} ${tempArray[i].value} → Hoán đổi ngay`, type: 'swap' });
+          tempArray[i].status = 'swapping';
+          tempArray[j].status = 'swapping';
+          tempArray[i].swapDirection = 'up';
+          tempArray[j].swapDirection = 'down';
+          setArray([...tempArray]);
+          await sleep(speedRef.current * 0.5); await waitControl();
+          if (stopRef.current || executionIdRef.current !== myId) return;
+
+          const temp = tempArray[i];
+          tempArray[i] = tempArray[j];
+          tempArray[j] = temp;
+          localSwaps++;
+          setStats(prev => ({ ...prev, swaps: localSwaps }));
+          setArray([...tempArray]);
+          await sleep(speedRef.current * 0.8); await waitControl();
+          if (stopRef.current || executionIdRef.current !== myId) return;
+
+          tempArray[i].swapDirection = null;
+          tempArray[j].swapDirection = null;
+          tempArray[i].status = 'active';
+          tempArray[j].status = 'default';
+          setArray([...tempArray]);
+        } else {
+          tempArray[j].status = 'default';
+          setArray([...tempArray]);
+        }
+      }
+      tempArray[i].status = 'sorted';
+      setArray([...tempArray]);
+    }
+    tempArray[n - 1].status = 'sorted';
+    setArray([...tempArray]);
+  };
+
   const startSort = async () => {
     if (isSorting) return;
     const myId = ++executionIdRef.current;
@@ -765,6 +837,7 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       else if (algorithm === 'quick') await quickSort(myId);
       else if (algorithm === 'merge') await mergeSort(myId);
       else if (algorithm === 'heap') await heapSort(myId);
+      else if (algorithm === 'interchange') await interchangeSort(myId);
       if (!stopRef.current && executionIdRef.current === myId) setCurrentStep({ message: "Hoàn tất sắp xếp!", type: 'done' });
     } finally { if (executionIdRef.current === myId) setIsSorting(false); }
   };
@@ -800,6 +873,13 @@ function Visualizer({ algorithm, onBack }: { algorithm: Algorithm, onBack: () =>
       <>
         <p className={currentStep?.type === 'compare' ? 'text-yellow-400 font-bold' : ''}>if (a[j] {sortOrder === 'asc' ? '<' : '>'} pivot) &#123;</p>
         <p className="pl-3">i++;</p>
+        <p className={`pl-3 ${currentStep?.type === 'swap' ? 'text-orange-400 font-bold' : ''}`}>swap(a[i], a[j]);</p>
+        <p>&#125;</p>
+      </>
+    );
+    if (algorithm === 'interchange') return (
+      <>
+        <p className={currentStep?.type === 'compare' ? 'text-yellow-400 font-bold' : ''}>if (a[j] {sortOrder === 'asc' ? '<' : '>'} a[i]) &#123;</p>
         <p className={`pl-3 ${currentStep?.type === 'swap' ? 'text-orange-400 font-bold' : ''}`}>swap(a[i], a[j]);</p>
         <p>&#125;</p>
       </>
